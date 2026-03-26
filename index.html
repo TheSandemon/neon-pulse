@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEON PULSE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0a;
+      --gold: #D4A853;
+      --neon: #00ff88;
+      --gold-dim: rgba(212, 168, 83, 0.15);
+      --neon-dim: rgba(0, 255, 136, 0.08);
+    }
+
+    body {
+      background: var(--bg);
+      overflow: hidden;
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--gold);
+      cursor: crosshair;
+      user-select: none;
+    }
+
+    #canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,10,0.85);
+      z-index: 10;
+      transition: opacity 0.6s ease;
+    }
+
+    #overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #overlay h1 {
+      font-family: 'Syncopate', sans-serif;
+      font-weight: 700;
+      font-size: clamp(2rem, 6vw, 5rem);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--neon) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.5rem;
+      text-shadow: none;
+      filter: drop-shadow(0 0 20px rgba(0,255,136,0.4));
+    }
+
+    #overlay p {
+      font-size: 0.85rem;
+      color: rgba(212,168,83,0.6);
+      letter-spacing: 0.15em;
+      margin-bottom: 2.5rem;
+    }
+
+    #start-btn {
+      font-family: 'Syncopate', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: linear-gradient(135deg, var(--gold), var(--neon));
+      border: none;
+      padding: 1rem 3rem;
+      cursor: pointer;
+      clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+      transition: filter 0.2s, transform 0.2s;
+    }
+
+    #start-btn:hover {
+      filter: brightness(1.2) drop-shadow(0 0 15px rgba(0,255,136,0.6));
+      transform: scale(1.05);
+    }
+
+    #hud {
+      position: fixed;
+      top: 1.5rem; left: 2rem;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    #hud .title {
+      font-family: 'Syncopate', sans-serif;
+      font-weight: 700;
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      color: var(--gold);
+      opacity: 0.7;
+    }
+
+    #hud .status {
+      font-size: 0.6rem;
+      color: var(--neon);
+      opacity: 0.5;
+      letter-spacing: 0.2em;
+      margin-top: 0.3rem;
+    }
+
+    #hud .freq-bar {
+      display: flex;
+      gap: 3px;
+      margin-top: 0.8rem;
+      align-items: flex-end;
+      height: 40px;
+    }
+
+    .freq-bar span {
+      width: 3px;
+      background: var(--neon);
+      border-radius: 2px;
+      transition: height 0.05s ease;
+      opacity: 0.7;
+    }
+
+    #corner-decor {
+      position: fixed;
+      bottom: 1.5rem; right: 2rem;
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      color: rgba(212,168,83,0.3);
+      z-index: 5;
+    }
+
+    .corner-line {
+      position: fixed;
+      background: var(--gold);
+      opacity: 0.15;
+      z-index: 5;
+    }
+
+    .corner-line.tl { top: 1rem; left: 1rem; width: 40px; height: 1px; }
+    .corner-line.tr { top: 1rem; right: 1rem; width: 40px; height: 1px; }
+    .corner-line.bl { bottom: 1rem; left: 1rem; width: 40px; height: 1px; }
+    .corner-line.br { bottom: 1rem; right: 1rem; width: 40px; height: 1px; }
+    .corner-line.vl { top: 1rem; left: 1rem; width: 1px; height: 40px; }
+    .corner-line.vr { top: 1rem; right: 1rem; width: 1px; height: 40px; }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="overlay">
+  <h1>NEON PULSE</h1>
+  <p>audio-reactive visualizer</p>
+  <button id="start-btn">tap to connect</button>
+</div>
+
+<div id="hud">
+  <div class="title">NEON PULSE</div>
+  <div class="status" id="status-line">awaiting signal</div>
+  <div class="freq-bar" id="freq-bar"></div>
+</div>
+
+<div id="corner-decor">SIGNAL ACTIVE</div>
+
+<div class="corner-line tl"></div>
+<div class="corner-line tr"></div>
+<div class="corner-line bl"></div>
+<div class="corner-line br"></div>
+<div class="corner-line vl"></div>
+<div class="corner-line vr"></div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const startBtn = document.getElementById('start-btn');
+  const statusLine = document.getElementById('status-line');
+  const freqBarEl = document.getElementById('freq-bar');
+  const cornerDecor = document.getElementById('corner-decor');
+
+  let W, H, cx, cy;
+  let audioCtx, analyser, source, dataArray, frequencyData;
+  let rings = [];
+  let particles = [];
+  let bassEnergy = 0, midEnergy = 0, highEnergy = 0;
+  let running = false;
+  let mouse = { x: 0, y: 0 };
+  let time = 0;
+
+  // Build freq bar indicators
+  for (let i = 0; i < 24; i++) {
+    const s = document.createElement('span');
+    freqBarEl.appendChild(s);
+  }
+  const freqBars = freqBarEl.querySelectorAll('span');
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cx = W / 2;
+    cy = H / 2;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Mouse tracking
+  window.addEventListener('mousemove', e => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+
+  startBtn.addEventListener('click', async () => {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.78;
+      source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      frequencyData = new Uint8Array(analyser.frequencyBinCount);
+
+      running = true;
+      overlay.classList.add('hidden');
+      statusLine.textContent = 'signal locked';
+      cornerDecor.textContent = '● LIVE';
+      cornerDecor.style.color = 'rgba(0,255,136,0.6)';
+
+      requestAnimationFrame(loop);
+    } catch(e) {
+      statusLine.textContent = 'mic denied';
+      console.error(e);
+    }
+  });
+
+  // Ring class
+  class Ring {
+    constructor(x, y, baseRadius, hue) {
+      this.x = x;
+      this.y = y;
+      this.baseRadius = baseRadius;
+      this.radius = baseRadius;
+      this.maxRadius = baseRadius * 3.5;
+      this.hue = hue;
+      this.alpha = 1;
+      this.lineWidth = 1.5;
+      this.speed = 0.6 + Math.random() * 0.4;
+      this.life = 1;
+      this.decay = 0.008 + Math.random() * 0.006;
+      this.growthRate = 0.8 + Math.random() * 1.2;
+      this.wobble = Math.random() * Math.PI * 2;
+      this.wobbleSpeed = 0.02 + Math.random() * 0.03;
+    }
+
+    update(energy) {
+      const speedMult = 1 + energy * 3;
+      this.radius += this.growthRate * speedMult;
+      this.life -= this.decay * (1 + energy);
+      this.alpha = Math.max(0, this.life);
+      this.wobble += this.wobbleSpeed;
+      this.lineWidth = 1 + energy * 3;
+    }
+
+    draw() {
+      if (this.alpha <= 0) return;
+      const wobbleOffset = Math.sin(this.wobble) * 2 * this.life;
+      const r = this.radius + wobbleOffset;
+
+      ctx.save();
+      ctx.globalAlpha = this.alpha * 0.8;
+      ctx.strokeStyle = `hsl(${this.hue}, 100%, 65%)`;
+      ctx.lineWidth = this.lineWidth;
+      ctx.shadowColor = `hsl(${this.hue}, 100%, 65%)`;
+      ctx.shadowBlur = 15 + this.life * 20;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner ring
+      ctx.globalAlpha = this.alpha * 0.3;
+      ctx.lineWidth = this.lineWidth * 0.4;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, r * 0.7, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    isDead() { return this.life <= 0; }
+  }
+
+  // Particle class
+  class Particle {
+    constructor(x, y, angle, speed, hue) {
+      this.x = x;
+      this.y = y;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
+      this.life = 1;
+      this.decay = 0.012 + Math.random() * 0.01;
+      this.size = 1 + Math.random() * 2;
+      this.hue = hue;
+    }
+
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vx *= 0.97;
+      this.vy *= 0.97;
+      this.life -= this.decay;
+    }
+
+    draw() {
+      if (this.life <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = this.life * 0.8;
+      ctx.fillStyle = `hsl(${this.hue}, 100%, 70%)`;
+      ctx.shadowColor = `hsl(${this.hue}, 100%, 70%)`;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    isDead() { return this.life <= 0; }
+  }
+
+  function getFrequencyBands() {
+    if (!analyser) return { bass: 0, mid: 0, high: 0 };
+    analyser.getByteFrequencyData(dataArray);
+    const len = dataArray.length;
+    const bass = dataArray.slice(0, Math.floor(len * 0.15)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.15) * 255);
+    const mid = dataArray.slice(Math.floor(len * 0.15), Math.floor(len * 0.5)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.35) * 255);
+    const high = dataArray.slice(Math.floor(len * 0.5), len).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.5) * 255);
+    return { bass, mid, high };
+  }
+
+  function spawnFromBand(band, hue) {
+    if (band < 0.08) return;
+    const intensity = (band - 0.08) / 0.92;
+    const count = Math.floor(1 + intensity * 8);
+    const angle = Math.random() * Math.PI * 2;
+    const baseRadius = 60 + intensity * 120;
+    const r = baseRadius + Math.sin(time * 2 + hue) * 20;
+
+    const ring = new Ring(cx, cy, r, hue);
+    rings.push(ring);
+
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 1.5 + intensity * 6;
+      const p = new Particle(
+        cx + Math.cos(a) * r,
+        cy + Math.sin(a) * r,
+        a, s, hue
+      );
+      particles.push(p);
+    }
+
+    // Extra burst on strong bass
+    if (band > 0.5 && hue === 150) {
+      for (let i = 0; i < 12; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const p = new Particle(cx, cy, a, 4 + Math.random() * 4, 45); // gold
+        particles.push(p);
+      }
+    }
+  }
+
+  // Ambient ring spawner
+  function spawnAmbient() {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 80 + Math.sin(time * 0.5) * 30;
+    const hue = Math.random() < 0.5 ? 150 : 45; // neon or gold
+    const ring = new Ring(cx, cy, r, hue);
+    rings.push(ring);
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = 'rgba(10, 10, 10, 0.18)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Radial vignette
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.7);
+    grd.addColorStop(0, 'rgba(10,10,10,0)');
+    grd.addColorStop(1, 'rgba(10,10,10,0.7)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawCenterPulse(energy) {
+    const pulse = energy * 30;
+    const hue = 150;
+    ctx.save();
+    ctx.globalAlpha = 0.06 + energy * 0.15;
+    ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
+    ctx.shadowColor = `hsl(${hue}, 100%, 65%)`;
+    ctx.shadowBlur = 40;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 40 + pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawMouseRipple() {
+    const dx = mouse.x - cx;
+    const dy = mouse.y - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 5) return;
+    ctx.save();
+    ctx.globalAlpha = 0.03;
+    ctx.strokeStyle = 'rgba(212,168,83,0.4)';
+    ctx.lineWidth = 0.5;
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, dist + i * 15, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function updateFreqBars(bass, mid, high) {
+    const bands = [...freqBars];
+    const step = Math.floor(frequencyData.length / bands.length);
+    for (let i = 0; i < bands.length; i++) {
+      const val = frequencyData[i * step] || 0;
+      const h = (val / 255) * 35 + 2;
+      bands[i].style.height = h + 'px';
+      const hue = val > 180 ? 45 : 150;
+      bands[i].style.background = `hsl(${hue}, 100%, 60%)`;
+    }
+  }
+
+  function loop() {
+    if (!running) return;
+
+    time += 0.016;
+
+    drawBackground();
+    drawMouseRipple();
+
+    const bands = getFrequencyBands();
+    analyser.getByteFrequencyData(frequencyData);
+
+    bassEnergy += (bands.bass - bassEnergy) * 0.15;
+    midEnergy += (bands.mid - midEnergy) * 0.15;
+    highEnergy += (bands.high - highEnergy) * 0.15;
+
+    // Spawn rings from frequency bands
+    if (Math.random() < 0.3 + bassEnergy * 0.5) spawnFromBand(bands.bass, 150); // neon
+    if (Math.random() < 0.2 + midEnergy * 0.4) spawnFromBand(bands.mid * 0.7, 45); // gold
+    if (Math.random() < 0.15 + highEnergy * 0.3) spawnFromBand(bands.high, 160); // teal-ish
+
+    // Ambient rings
+    if (Math.random() < 0.02) spawnAmbient();
+
+    // Draw rings
+    for (let i = rings.length - 1; i >= 0; i--) {
+      rings[i].update(bassEnergy + midEnergy);
+      rings[i].draw();
+      if (rings[i].isDead()) rings.splice(i, 1);
+    }
+
+    // Draw particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      particles[i].update();
+      particles[i].draw();
+      if (particles[i].isDead()) particles.splice(i, 1);
+    }
+
+    drawCenterPulse(bassEnergy);
+
+    updateFreqBars(bands.bass, bands.mid, bands.high);
+
+    // Cap entities
+    if (rings.length > 60) rings.splice(0, rings.length - 60);
+    if (particles.length > 400) particles.splice(0, particles.length - 400);
+
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>
