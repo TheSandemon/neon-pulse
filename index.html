@@ -199,6 +199,105 @@
       color: var(--gold);
     }
 
+    #sensitivity-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
+    }
+
+    #sensitivity-row input[type=range] {
+      -webkit-appearance: none;
+      width: 70px;
+      height: 2px;
+      background: rgba(212,168,83,0.2);
+      outline: none;
+      cursor: pointer;
+    }
+
+    #sensitivity-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+    }
+
+    #sensitivity-val {
+      font-size: 0.5rem;
+      letter-spacing: 0.1em;
+      color: rgba(212,168,83,0.5);
+      min-width: 22px;
+      text-align: right;
+    }
+
+    #help-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,10,0.88);
+      z-index: 20;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    #help-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #help-overlay .help-box {
+      border: 1px solid rgba(212,168,83,0.3);
+      padding: 2rem 2.5rem;
+      background: rgba(10,10,10,0.95);
+      max-width: 380px;
+    }
+
+    #help-overlay h2 {
+      font-family: 'Syncopate', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      color: var(--gold);
+      margin-bottom: 1.2rem;
+    }
+
+    #help-overlay .key-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      gap: 2rem;
+    }
+
+    #help-overlay .key {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--neon);
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.2);
+      padding: 0.15rem 0.5rem;
+      min-width: 28px;
+      text-align: center;
+    }
+
+    #help-overlay .desc {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: rgba(212,168,83,0.5);
+    }
+
+    #help-overlay .close-hint {
+      font-size: 0.5rem;
+      letter-spacing: 0.2em;
+      color: rgba(212,168,83,0.2);
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+
     #corner-decor {
       position: fixed;
       bottom: 1.5rem; right: 2rem;
@@ -302,6 +401,7 @@
     <button class="mode-btn" data-mode="wave">WAVE</button>
     <button class="mode-btn" data-mode="burst">BURST</button>
     <button class="mode-btn" data-mode="grid">GRID</button>
+    <button class="mode-btn" data-mode="radial">RADIAL</button>
   </div>
   <div class="ctrl-label" style="margin-top:0.4rem">theme</div>
   <div class="theme-row">
@@ -309,6 +409,26 @@
     <button class="mode-btn" data-theme="gold">GOLD</button>
     <button class="mode-btn" data-theme="cyber">CYBER</button>
     <button class="mode-btn" data-theme="void">VOID</button>
+  </div>
+  <div class="ctrl-label" style="margin-top:0.4rem">gain</div>
+  <div id="sensitivity-row">
+    <input type="range" id="sensitivity-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+    <span id="sensitivity-val">1.0</span>
+  </div>
+</div>
+
+<div id="help-overlay">
+  <div class="help-box">
+    <h2>// CONTROLS</h2>
+    <div class="key-row"><span class="key">M</span><span class="desc">cycle mode</span></div>
+    <div class="key-row"><span class="key">T</span><span class="desc">cycle theme</span></div>
+    <div class="key-row"><span class="key">SPACE</span><span class="desc">play / pause</span></div>
+    <div class="key-row"><span class="key">S</span><span class="desc">screenshot</span></div>
+    <div class="key-row"><span class="key">H</span><span class="desc">toggle help</span></div>
+    <div class="key-row"><span class="key">C</span><span class="desc">auto-cycle modes</span></div>
+    <div class="key-row"><span class="key">1-5</span><span class="desc">direct mode select</span></div>
+    <div class="key-row"><span class="key">ESC</span><span class="desc">close this</span></div>
+    <p class="close-hint">press H or ESC to close</p>
   </div>
 </div>
 
@@ -345,6 +465,9 @@
   const trackName = document.getElementById('track-name');
   const modeBtns = document.querySelectorAll('[data-mode]');
   const themeBtns = document.querySelectorAll('[data-theme]');
+  const helpOverlay = document.getElementById('help-overlay');
+  const sensitivitySlider = document.getElementById('sensitivity-slider');
+  const sensitivityVal = document.getElementById('sensitivity-val');
 
   const THEMES = {
     neon:   { hue1: 150, hue2: 45,  name: 'NEON' },
@@ -353,8 +476,10 @@
     void:   { hue1: 270, hue2: 320, name: 'VOID' },
   };
 
+  const MODES = ['rings', 'wave', 'burst', 'grid', 'radial'];
+
   let currentTheme = 'neon';
-  let currentMode = 'rings';
+  let currentMode = 'radial';
   let W, H, cx, cy;
   let audioCtx, analyser, source, dataArray, frequencyData;
   let audioSource = null;
@@ -368,8 +493,13 @@
   let running = false;
   let mouse = { x: 0, y: 0 };
   let time = 0;
-  let sourceType = null; // 'mic' or 'file'
+  let sourceType = null;
   let isPlaying = false;
+  let sensitivity = 1.0;
+  let autoCycle = false;
+  let autoCycleTimer = 0;
+  let radialBars = []; // radial EQ bar segments
+  let trailCanvas, trailCtx; // for trail/glow effect
 
   // Build freq bar indicators
   for (let i = 0; i < 32; i++) {
@@ -383,10 +513,27 @@
     H = canvas.height = window.innerHeight;
     cx = W / 2;
     cy = H / 2;
+    // Trail canvas for glow persistence
+    if (!trailCanvas) {
+      trailCanvas = document.createElement('canvas');
+      trailCtx = trailCanvas.getContext('2d');
+    }
+    trailCanvas.width = W;
+    trailCanvas.height = H;
+    trailCtx.clearRect(0, 0, W, H);
     initGrid();
+    initRadialBars();
   }
   window.addEventListener('resize', resize);
   resize();
+
+  function initRadialBars() {
+    radialBars = [];
+    const count = 64;
+    for (let i = 0; i < count; i++) {
+      radialBars.push({ angle: (i / count) * Math.PI * 2, value: 0, target: 0 });
+    }
+  }
 
   function initGrid() {
     gridCells = [];
@@ -510,6 +657,11 @@
     audioElement.currentTime = (e.clientX - rect.left) / rect.width * audioElement.duration;
   });
 
+  sensitivitySlider.addEventListener('input', () => {
+    sensitivity = parseFloat(sensitivitySlider.value);
+    sensitivityVal.textContent = sensitivity.toFixed(1);
+  });
+
   // Mode & theme controls
   modeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -519,6 +671,7 @@
       rings = [];
       particles = [];
       wavePoints = [];
+      trailCtx.clearRect(0, 0, W, H);
     });
   });
 
@@ -530,23 +683,93 @@
     });
   });
 
+  function setMode(mode) {
+    currentMode = mode;
+    modeBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+    rings = [];
+    particles = [];
+    wavePoints = [];
+    trailCtx.clearRect(0, 0, W, H);
+  }
+
+  function setTheme(theme) {
+    currentTheme = theme;
+    themeBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === theme);
+    });
+  }
+
+  function screenshot() {
+    // Render current frame to a temporary canvas to include everything
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width = W;
+    tmpCanvas.height = H;
+    const tmpCtx = tmpCanvas.getContext('2d');
+    tmpCtx.drawImage(canvas, 0, 0);
+    // Draw trail canvas on top
+    tmpCtx.drawImage(trailCanvas, 0, 0);
+    const link = document.createElement('a');
+    link.download = 'neon-pulse-' + Date.now() + '.png';
+    link.href = tmpCanvas.toDataURL('image/png');
+    link.click();
+    statusLine.textContent = 'screenshot saved';
+    setTimeout(() => { if (running) statusLine.textContent = sourceType === 'mic' ? 'mic signal locked' : 'file loaded'; }, 2000);
+  }
+
+  function toggleHelp() {
+    helpOverlay.classList.toggle('visible');
+  }
+
+  function cycleAuto() {
+    autoCycle = !autoCycle;
+    autoCycleTimer = 0;
+    statusLine.textContent = autoCycle ? 'auto-cycle ON' : 'auto-cycle OFF';
+    setTimeout(() => {
+      if (running) statusLine.textContent = sourceType === 'mic' ? 'mic signal locked' : 'file loaded';
+    }, 1500);
+  }
+
   // Keyboard shortcuts
   window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      helpOverlay.classList.remove('visible');
+      return;
+    }
+    if (e.key === 'h' || e.key === 'H') {
+      toggleHelp();
+      return;
+    }
+    if (e.key === 's' || e.key === 'S') {
+      screenshot();
+      return;
+    }
+    if (e.key === 'c' || e.key === 'C') {
+      cycleAuto();
+      return;
+    }
     if (e.key === 'm' || e.key === 'M') {
-      const modes = ['rings', 'wave', 'burst', 'grid'];
-      const idx = modes.indexOf(currentMode);
-      const next = modes[(idx + 1) % modes.length];
-      document.querySelector(`[data-mode="${next}"]`).click();
+      const idx = MODES.indexOf(currentMode);
+      setMode(MODES[(idx + 1) % MODES.length]);
+      return;
     }
     if (e.key === 't' || e.key === 'T') {
       const themes = ['neon', 'gold', 'cyber', 'void'];
       const idx = themes.indexOf(currentTheme);
-      const next = themes[(idx + 1) % themes.length];
-      document.querySelector(`[data-theme="${next}"]`).click();
+      setTheme(themes[(idx + 1) % themes.length]);
+      return;
     }
     if (e.key === ' ') {
       e.preventDefault();
       playBtn.click();
+      return;
+    }
+    // Direct mode keys 1-5
+    const modeKey = parseInt(e.key);
+    if (modeKey >= 1 && modeKey <= 5) {
+      setMode(MODES[modeKey - 1]);
+      return;
     }
   });
 
@@ -602,14 +825,14 @@
 
   // Particle class
   class Particle {
-    constructor(x, y, angle, speed, hue) {
+    constructor(x, y, angle, speed, hue, size) {
       this.x = x;
       this.y = y;
       this.vx = Math.cos(angle) * speed;
       this.vy = Math.sin(angle) * speed;
       this.life = 1;
       this.decay = 0.01 + Math.random() * 0.01;
-      this.size = 1 + Math.random() * 2.5;
+      this.size = size !== undefined ? size : 1 + Math.random() * 2.5;
       this.hue = hue;
     }
     update() {
@@ -674,7 +897,7 @@
     const bass = dataArray.slice(0, Math.floor(len * 0.12)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.12) * 255);
     const mid = dataArray.slice(Math.floor(len * 0.12), Math.floor(len * 0.5)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.38) * 255);
     const high = dataArray.slice(Math.floor(len * 0.5), len).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.5) * 255);
-    return { bass, mid, high };
+    return { bass: bass * sensitivity, mid: mid * sensitivity, high: high * sensitivity };
   }
 
   function isBeat(bass) {
@@ -693,12 +916,12 @@
     const baseRadius = 50 + intensity * 140;
     const r = baseRadius + Math.sin(time * 2 + hue) * 20;
 
-    if (currentMode === 'rings' || currentMode === 'burst') {
+    if (currentMode === 'rings' || currentMode === 'burst' || currentMode === 'radial') {
       const ring = new Ring(cx, cy, r, hue);
       rings.push(ring);
     }
 
-    if (currentMode === 'burst') {
+    if (currentMode === 'burst' || currentMode === 'radial') {
       for (let i = 0; i < count * 2; i++) {
         const a = Math.random() * Math.PI * 2;
         const s = 2 + intensity * 7;
@@ -709,11 +932,7 @@
       for (let i = 0; i < count; i++) {
         const a = Math.random() * Math.PI * 2;
         const s = 1.5 + intensity * 5;
-        const p = new Particle(
-          cx + Math.cos(a) * r,
-          cy + Math.sin(a) * r,
-          a, s, hue
-        );
+        const p = new Particle(cx + Math.cos(a) * r, cy + Math.sin(a) * r, a, s, hue);
         particles.push(p);
       }
     }
@@ -744,7 +963,6 @@
       const p = new Particle(cx + Math.cos(a) * d, cy + Math.sin(a) * d, a, s, hue);
       particles.push(p);
     }
-    // Gold sparks
     for (let i = 0; i < count / 2; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = 2 + energy * 8;
@@ -752,6 +970,12 @@
       const p = new Particle(cx + Math.cos(a) * d, cy + Math.sin(a) * d, a, s, t().hue2);
       particles.push(p);
     }
+  }
+
+  // Draw trail background (glow persistence)
+  function drawTrail() {
+    trailCtx.fillStyle = 'rgba(10, 10, 10, 0.18)';
+    trailCtx.fillRect(0, 0, W, H);
   }
 
   function drawBackground() {
@@ -807,6 +1031,77 @@
     ctx.restore();
   }
 
+  function drawRadialEQ(bands) {
+    // Map frequency data to 64 radial bars
+    const count = radialBars.length;
+    const baseRadius = Math.min(W, H) * 0.12;
+
+    analyser.getByteFrequencyData(frequencyData);
+
+    // Compute per-bar values from frequency data
+    for (let i = 0; i < count; i++) {
+      const freqIdx = Math.floor(i / count * frequencyData.length);
+      const val = (frequencyData[freqIdx] || 0) / 255;
+      radialBars[i].target = val * sensitivity;
+      radialBars[i].value += (radialBars[i].target - radialBars[i].value) * 0.18;
+    }
+
+    // Draw concentric rings from frequency bands
+    const numRings = 3;
+    for (let ring = 0; ring < numRings; ring++) {
+      const ringRadius = baseRadius + ring * baseRadius * 0.8;
+      ctx.save();
+      ctx.globalAlpha = 0.15 + ring * 0.05;
+      ctx.strokeStyle = `hsl(${t().hue1}, 100%, 40%)`;
+      ctx.lineWidth = 0.5;
+      ctx.shadowColor = `hsl(${t().hue1}, 100%, 40%)`;
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw bars
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const bar = radialBars[i];
+      const angle = bar.angle + time * 0.05; // slow rotation
+      const barLen = bar.value * baseRadius * 2.5;
+      const barW = (Math.PI * 2 / count) * 0.85;
+
+      if (bar.value < 0.01) continue;
+
+      const hue = bar.value > 0.65 ? t().hue2 : t().hue1;
+      const alpha = 0.3 + bar.value * 0.7;
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+      ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+      ctx.shadowBlur = 8 + bar.value * 20;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringRadius + barLen, angle - barW / 2, angle + barW / 2);
+      ctx.arc(cx, cy, ringRadius, angle + barW / 2, angle - barW / 2, true);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Center glow based on bass
+    const pulse = bands.bass * 60;
+    ctx.save();
+    ctx.globalAlpha = 0.06 + bands.bass * 0.15;
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseRadius * 1.5);
+    grd.addColorStop(0, `hsl(${t().hue1}, 100%, 70%)`);
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseRadius * 1.5 + pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawCenterPulse(energy) {
     const pulse = energy * 35;
     ctx.save();
@@ -841,7 +1136,7 @@
     analyser.getByteFrequencyData(frequencyData);
     const step = Math.floor(frequencyData.length / freqBars.length);
     for (let i = 0; i < freqBars.length; i++) {
-      const val = frequencyData[i * step] || 0;
+      const val = (frequencyData[i * step] || 0);
       const h = (val / 255) * 32 + 2;
       freqBars[i].style.height = h + 'px';
       const hue = val > 180 ? t().hue2 : t().hue1;
@@ -852,6 +1147,18 @@
   function loop() {
     if (!running) return;
     time += 0.016;
+
+    // Auto-cycle
+    if (autoCycle) {
+      autoCycleTimer += 0.016;
+      if (autoCycleTimer > 5) {
+        autoCycleTimer = 0;
+        const idx = MODES.indexOf(currentMode);
+        setMode(MODES[(idx + 1) % MODES.length]);
+      }
+    }
+
+    drawTrail();
     drawBackground();
     drawMouseRipple();
 
@@ -874,6 +1181,11 @@
       drawWaveform();
       if (Math.random() < 0.2 + midEnergy * 0.4) spawnWave(bands.mid, t().hue1);
       if (Math.random() < 0.15 + highEnergy * 0.3) spawnWave(bands.high * 0.6, t().hue2);
+    } else if (currentMode === 'radial') {
+      drawRadialEQ(bands);
+      // Spawn from bands
+      if (Math.random() < 0.25 + bassEnergy * 0.5) spawnFromBand(bands.bass, t().hue1);
+      if (Math.random() < 0.18 + midEnergy * 0.4) spawnFromBand(bands.mid * 0.7, t().hue2);
     } else {
       // rings / burst modes
       if (Math.random() < 0.25 + bassEnergy * 0.5) spawnFromBand(bands.bass, t().hue1);
@@ -908,7 +1220,7 @@
       if (wavePoints[i].isDead()) wavePoints.splice(i, 1);
     }
 
-    if (currentMode !== 'grid' && currentMode !== 'wave') {
+    if (currentMode !== 'grid' && currentMode !== 'wave' && currentMode !== 'radial') {
       drawCenterPulse(bassEnergy);
     }
 
@@ -918,7 +1230,7 @@
     if (particles.length > 500) particles.splice(0, particles.length - 500);
     if (wavePoints.length > 300) wavePoints.splice(0, wavePoints.length - 300);
 
-    prevBass = bassEnergy;
+    prevBass = bands.bass;
     requestAnimationFrame(loop);
   }
 })();
