@@ -39,7 +39,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: rgba(10,10,10,0.85);
+      background: rgba(10,10,10,0.92);
       z-index: 10;
       transition: opacity 0.6s ease;
     }
@@ -60,35 +60,62 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
       margin-bottom: 1.5rem;
-      text-shadow: none;
       filter: drop-shadow(0 0 20px rgba(0,255,136,0.4));
     }
 
     #overlay p {
-      font-size: 0.85rem;
-      color: rgba(212,168,83,0.6);
+      font-size: 0.8rem;
+      color: rgba(212,168,83,0.5);
       letter-spacing: 0.15em;
-      margin-bottom: 2.5rem;
+      margin-bottom: 1.5rem;
     }
 
-    #start-btn {
+    .source-btns {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .source-btn {
       font-family: 'Syncopate', sans-serif;
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       font-weight: 700;
-      letter-spacing: 0.3em;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
       color: var(--bg);
       background: linear-gradient(135deg, var(--gold), var(--neon));
       border: none;
-      padding: 1rem 3rem;
+      padding: 0.75rem 1.5rem;
       cursor: pointer;
-      clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+      clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
       transition: filter 0.2s, transform 0.2s;
     }
 
-    #start-btn:hover {
-      filter: brightness(1.2) drop-shadow(0 0 15px rgba(0,255,136,0.6));
+    .source-btn:hover {
+      filter: brightness(1.2) drop-shadow(0 0 12px rgba(0,255,136,0.5));
       transform: scale(1.05);
+    }
+
+    .source-btn.secondary {
+      background: transparent;
+      color: var(--gold);
+      border: 1px solid var(--gold);
+      clip-path: none;
+    }
+
+    .source-btn.secondary:hover {
+      background: var(--gold-dim);
+      filter: none;
+    }
+
+    #file-input { display: none; }
+
+    #overlay .hint {
+      font-size: 0.6rem;
+      color: rgba(212,168,83,0.3);
+      letter-spacing: 0.2em;
     }
 
     #hud {
@@ -101,43 +128,135 @@
     #hud .title {
       font-family: 'Syncopate', sans-serif;
       font-weight: 700;
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       letter-spacing: 0.4em;
       color: var(--gold);
       opacity: 0.7;
     }
 
     #hud .status {
-      font-size: 0.6rem;
+      font-size: 0.58rem;
       color: var(--neon);
-      opacity: 0.5;
+      opacity: 0.6;
       letter-spacing: 0.2em;
       margin-top: 0.3rem;
     }
 
     #hud .freq-bar {
       display: flex;
-      gap: 3px;
+      gap: 2px;
       margin-top: 0.8rem;
       align-items: flex-end;
-      height: 40px;
+      height: 36px;
     }
 
     .freq-bar span {
       width: 3px;
       background: var(--neon);
       border-radius: 2px;
-      transition: height 0.05s ease;
+      transition: height 0.04s ease;
       opacity: 0.7;
+    }
+
+    #controls {
+      position: fixed;
+      top: 1.5rem; right: 2rem;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+
+    .ctrl-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.25em;
+      color: rgba(212,168,83,0.4);
+      text-transform: uppercase;
+    }
+
+    .mode-row, .theme-row {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .mode-btn {
+      font-family: 'Syncopate', sans-serif;
+      font-size: 0.5rem;
+      letter-spacing: 0.15em;
+      padding: 0.3rem 0.6rem;
+      background: rgba(212,168,83,0.08);
+      border: 1px solid rgba(212,168,83,0.2);
+      color: rgba(212,168,83,0.5);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .mode-btn:hover, .mode-btn.active {
+      background: rgba(212,168,83,0.2);
+      border-color: var(--gold);
+      color: var(--gold);
     }
 
     #corner-decor {
       position: fixed;
       bottom: 1.5rem; right: 2rem;
-      font-size: 0.55rem;
+      font-size: 0.52rem;
       letter-spacing: 0.2em;
       color: rgba(212,168,83,0.3);
       z-index: 5;
+    }
+
+    #playback-bar {
+      position: fixed;
+      bottom: 1.5rem; left: 2rem;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #playback-bar.visible { opacity: 1; }
+
+    #play-btn {
+      font-size: 0.55rem;
+      letter-spacing: 0.15em;
+      background: rgba(212,168,83,0.12);
+      border: 1px solid rgba(212,168,83,0.25);
+      color: var(--gold);
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      font-family: 'Syncopate', sans-serif;
+    }
+
+    #track-name {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: rgba(212,168,83,0.4);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #seek-bar {
+      width: 120px;
+      height: 2px;
+      background: rgba(212,168,83,0.15);
+      border-radius: 1px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    #seek-fill {
+      height: 100%;
+      background: var(--gold);
+      border-radius: 1px;
+      width: 0%;
+      transition: width 0.1s;
     }
 
     .corner-line {
@@ -162,13 +281,41 @@
 <div id="overlay">
   <h1>NEON PULSE</h1>
   <p>audio-reactive visualizer</p>
-  <button id="start-btn">tap to connect</button>
+  <div class="source-btns">
+    <button class="source-btn" id="mic-btn">microphone</button>
+    <button class="source-btn secondary" id="file-btn">load audio file</button>
+  </div>
+  <input type="file" id="file-input" accept="audio/*">
+  <p class="hint">or drag & drop an audio file anywhere</p>
 </div>
 
 <div id="hud">
   <div class="title">NEON PULSE</div>
   <div class="status" id="status-line">awaiting signal</div>
   <div class="freq-bar" id="freq-bar"></div>
+</div>
+
+<div id="controls">
+  <div class="ctrl-label">mode</div>
+  <div class="mode-row">
+    <button class="mode-btn active" data-mode="rings">RINGS</button>
+    <button class="mode-btn" data-mode="wave">WAVE</button>
+    <button class="mode-btn" data-mode="burst">BURST</button>
+    <button class="mode-btn" data-mode="grid">GRID</button>
+  </div>
+  <div class="ctrl-label" style="margin-top:0.4rem">theme</div>
+  <div class="theme-row">
+    <button class="mode-btn active" data-theme="neon">NEON</button>
+    <button class="mode-btn" data-theme="gold">GOLD</button>
+    <button class="mode-btn" data-theme="cyber">CYBER</button>
+    <button class="mode-btn" data-theme="void">VOID</button>
+  </div>
+</div>
+
+<div id="playback-bar">
+  <button id="play-btn">&#9646;&#9646;</button>
+  <div id="seek-bar"><div id="seek-fill"></div></div>
+  <div id="track-name">track.mp3</div>
 </div>
 
 <div id="corner-decor">SIGNAL ACTIVE</div>
@@ -185,22 +332,47 @@
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   const overlay = document.getElementById('overlay');
-  const startBtn = document.getElementById('start-btn');
+  const micBtn = document.getElementById('mic-btn');
+  const fileBtn = document.getElementById('file-btn');
+  const fileInput = document.getElementById('file-input');
   const statusLine = document.getElementById('status-line');
   const freqBarEl = document.getElementById('freq-bar');
   const cornerDecor = document.getElementById('corner-decor');
+  const playbackBar = document.getElementById('playback-bar');
+  const playBtn = document.getElementById('play-btn');
+  const seekBar = document.getElementById('seek-bar');
+  const seekFill = document.getElementById('seek-fill');
+  const trackName = document.getElementById('track-name');
+  const modeBtns = document.querySelectorAll('[data-mode]');
+  const themeBtns = document.querySelectorAll('[data-theme]');
 
+  const THEMES = {
+    neon:   { hue1: 150, hue2: 45,  name: 'NEON' },
+    gold:   { hue1: 45,  hue2: 35,  name: 'GOLD' },
+    cyber:  { hue1: 190, hue2: 280, name: 'CYBER' },
+    void:   { hue1: 270, hue2: 320, name: 'VOID' },
+  };
+
+  let currentTheme = 'neon';
+  let currentMode = 'rings';
   let W, H, cx, cy;
   let audioCtx, analyser, source, dataArray, frequencyData;
+  let audioSource = null;
+  let audioElement = null;
   let rings = [];
   let particles = [];
+  let wavePoints = [];
+  let gridCells = [];
   let bassEnergy = 0, midEnergy = 0, highEnergy = 0;
+  let prevBass = 0, beatTime = 0;
   let running = false;
   let mouse = { x: 0, y: 0 };
   let time = 0;
+  let sourceType = null; // 'mic' or 'file'
+  let isPlaying = false;
 
   // Build freq bar indicators
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 32; i++) {
     const s = document.createElement('span');
     freqBarEl.appendChild(s);
   }
@@ -211,40 +383,174 @@
     H = canvas.height = window.innerHeight;
     cx = W / 2;
     cy = H / 2;
+    initGrid();
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // Mouse tracking
+  function initGrid() {
+    gridCells = [];
+    const cols = 24;
+    const rows = Math.floor(H / 30);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        gridCells.push({ r, c, intensity: 0 });
+      }
+    }
+  }
+
   window.addEventListener('mousemove', e => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
   });
 
-  startBtn.addEventListener('click', async () => {
+  // Drag and drop
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('audio/')) loadAudioFile(file);
+  });
+
+  micBtn.addEventListener('click', async () => {
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.78;
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.75;
       source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
       dataArray = new Uint8Array(analyser.frequencyBinCount);
       frequencyData = new Uint8Array(analyser.frequencyBinCount);
-
+      sourceType = 'mic';
       running = true;
       overlay.classList.add('hidden');
-      statusLine.textContent = 'signal locked';
+      statusLine.textContent = 'mic signal locked';
       cornerDecor.textContent = '● LIVE';
       cornerDecor.style.color = 'rgba(0,255,136,0.6)';
-
       requestAnimationFrame(loop);
     } catch(e) {
       statusLine.textContent = 'mic denied';
-      console.error(e);
     }
   });
+
+  fileBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) loadAudioFile(e.target.files[0]);
+  });
+
+  function loadAudioFile(file) {
+    if (audioCtx) {
+      try { audioCtx.close(); } catch(e) {}
+    }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.75;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    frequencyData = new Uint8Array(analyser.frequencyBinCount);
+
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.remove();
+    }
+    audioElement = new Audio();
+    audioElement.src = URL.createObjectURL(file);
+    audioElement.crossOrigin = 'anonymous';
+
+    audioSource = audioCtx.createMediaElementSource(audioElement);
+    audioSource.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    sourceType = 'file';
+    trackName.textContent = file.name;
+    playbackBar.classList.add('visible');
+
+    audioElement.addEventListener('ended', () => {
+      isPlaying = false;
+      playBtn.textContent = '▶';
+    });
+
+    audioElement.addEventListener('timeupdate', () => {
+      if (audioElement.duration) {
+        seekFill.style.width = (audioElement.currentTime / audioElement.duration * 100) + '%';
+      }
+    });
+
+    audioElement.play().then(() => {
+      isPlaying = true;
+      playBtn.textContent = '⏸';
+    }).catch(() => {});
+
+    overlay.classList.add('hidden');
+    statusLine.textContent = 'file loaded';
+    cornerDecor.textContent = '● PLAYING';
+    cornerDecor.style.color = 'rgba(212,168,83,0.7)';
+    running = true;
+    requestAnimationFrame(loop);
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (!audioElement) return;
+    if (isPlaying) {
+      audioElement.pause();
+      isPlaying = false;
+      playBtn.textContent = '▶';
+    } else {
+      audioElement.play();
+      isPlaying = true;
+      playBtn.textContent = '⏸';
+    }
+  });
+
+  seekBar.addEventListener('click', e => {
+    if (!audioElement || !audioElement.duration) return;
+    const rect = seekBar.getBoundingClientRect();
+    audioElement.currentTime = (e.clientX - rect.left) / rect.width * audioElement.duration;
+  });
+
+  // Mode & theme controls
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentMode = btn.dataset.mode;
+      modeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      rings = [];
+      particles = [];
+      wavePoints = [];
+    });
+  });
+
+  themeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTheme = btn.dataset.theme;
+      themeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', e => {
+    if (e.key === 'm' || e.key === 'M') {
+      const modes = ['rings', 'wave', 'burst', 'grid'];
+      const idx = modes.indexOf(currentMode);
+      const next = modes[(idx + 1) % modes.length];
+      document.querySelector(`[data-mode="${next}"]`).click();
+    }
+    if (e.key === 't' || e.key === 'T') {
+      const themes = ['neon', 'gold', 'cyber', 'void'];
+      const idx = themes.indexOf(currentTheme);
+      const next = themes[(idx + 1) % themes.length];
+      document.querySelector(`[data-theme="${next}"]`).click();
+    }
+    if (e.key === ' ') {
+      e.preventDefault();
+      playBtn.click();
+    }
+  });
+
+  const t = () => THEMES[currentTheme];
 
   // Ring class
   class Ring {
@@ -253,52 +559,44 @@
       this.y = y;
       this.baseRadius = baseRadius;
       this.radius = baseRadius;
-      this.maxRadius = baseRadius * 3.5;
+      this.maxRadius = baseRadius * 4;
       this.hue = hue;
       this.alpha = 1;
       this.lineWidth = 1.5;
-      this.speed = 0.6 + Math.random() * 0.4;
       this.life = 1;
-      this.decay = 0.008 + Math.random() * 0.006;
-      this.growthRate = 0.8 + Math.random() * 1.2;
+      this.decay = 0.007 + Math.random() * 0.005;
+      this.growthRate = 0.7 + Math.random() * 1.0;
       this.wobble = Math.random() * Math.PI * 2;
-      this.wobbleSpeed = 0.02 + Math.random() * 0.03;
+      this.wobbleSpeed = 0.015 + Math.random() * 0.02;
     }
-
     update(energy) {
       const speedMult = 1 + energy * 3;
       this.radius += this.growthRate * speedMult;
-      this.life -= this.decay * (1 + energy);
+      this.life -= this.decay * (1 + energy * 0.5);
       this.alpha = Math.max(0, this.life);
       this.wobble += this.wobbleSpeed;
       this.lineWidth = 1 + energy * 3;
     }
-
     draw() {
       if (this.alpha <= 0) return;
-      const wobbleOffset = Math.sin(this.wobble) * 2 * this.life;
+      const wobbleOffset = Math.sin(this.wobble) * 3 * this.life;
       const r = this.radius + wobbleOffset;
-
       ctx.save();
       ctx.globalAlpha = this.alpha * 0.8;
-      ctx.strokeStyle = `hsl(${this.hue}, 100%, 65%)`;
+      ctx.strokeStyle = `hsl(${this.hue}, 100%, 62%)`;
       ctx.lineWidth = this.lineWidth;
-      ctx.shadowColor = `hsl(${this.hue}, 100%, 65%)`;
-      ctx.shadowBlur = 15 + this.life * 20;
+      ctx.shadowColor = `hsl(${this.hue}, 100%, 62%)`;
+      ctx.shadowBlur = 15 + this.life * 25;
       ctx.beginPath();
       ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
       ctx.stroke();
-
-      // Inner ring
-      ctx.globalAlpha = this.alpha * 0.3;
-      ctx.lineWidth = this.lineWidth * 0.4;
+      ctx.globalAlpha = this.alpha * 0.25;
+      ctx.lineWidth = this.lineWidth * 0.35;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, r * 0.7, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, r * 0.65, 0, Math.PI * 2);
       ctx.stroke();
-
       ctx.restore();
     }
-
     isDead() { return this.life <= 0; }
   }
 
@@ -310,11 +608,10 @@
       this.vx = Math.cos(angle) * speed;
       this.vy = Math.sin(angle) * speed;
       this.life = 1;
-      this.decay = 0.012 + Math.random() * 0.01;
-      this.size = 1 + Math.random() * 2;
+      this.decay = 0.01 + Math.random() * 0.01;
+      this.size = 1 + Math.random() * 2.5;
       this.hue = hue;
     }
-
     update() {
       this.x += this.vx;
       this.y += this.vy;
@@ -322,20 +619,51 @@
       this.vy *= 0.97;
       this.life -= this.decay;
     }
-
     draw() {
       if (this.life <= 0) return;
       ctx.save();
       ctx.globalAlpha = this.life * 0.8;
-      ctx.fillStyle = `hsl(${this.hue}, 100%, 70%)`;
-      ctx.shadowColor = `hsl(${this.hue}, 100%, 70%)`;
-      ctx.shadowBlur = 8;
+      ctx.fillStyle = `hsl(${this.hue}, 100%, 68%)`;
+      ctx.shadowColor = `hsl(${this.hue}, 100%, 68%)`;
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
+    isDead() { return this.life <= 0; }
+  }
 
+  // Wave point
+  class WavePoint {
+    constructor(x, y, hue) {
+      this.x = x;
+      this.y = y;
+      this.baseY = y;
+      this.hue = hue;
+      this.vy = 0;
+      this.life = 1;
+      this.decay = 0.008;
+    }
+    update(band) {
+      const force = (band - 0.3) * 80;
+      this.vy -= force;
+      this.y += this.vy;
+      this.vy *= 0.85;
+      this.life -= this.decay;
+    }
+    draw() {
+      if (this.life <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = this.life * 0.9;
+      ctx.fillStyle = `hsl(${this.hue}, 100%, 65%)`;
+      ctx.shadowColor = `hsl(${this.hue}, 100%, 65%)`;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 2.5 * this.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     isDead() { return this.life <= 0; }
   }
 
@@ -343,73 +671,149 @@
     if (!analyser) return { bass: 0, mid: 0, high: 0 };
     analyser.getByteFrequencyData(dataArray);
     const len = dataArray.length;
-    const bass = dataArray.slice(0, Math.floor(len * 0.15)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.15) * 255);
-    const mid = dataArray.slice(Math.floor(len * 0.15), Math.floor(len * 0.5)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.35) * 255);
+    const bass = dataArray.slice(0, Math.floor(len * 0.12)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.12) * 255);
+    const mid = dataArray.slice(Math.floor(len * 0.12), Math.floor(len * 0.5)).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.38) * 255);
     const high = dataArray.slice(Math.floor(len * 0.5), len).reduce((a,b) => a+b, 0) / (Math.floor(len * 0.5) * 255);
     return { bass, mid, high };
   }
 
+  function isBeat(bass) {
+    if (bass > prevBass * 1.35 && bass > 0.25 && time - beatTime > 0.15) {
+      beatTime = time;
+      return true;
+    }
+    return false;
+  }
+
   function spawnFromBand(band, hue) {
-    if (band < 0.08) return;
-    const intensity = (band - 0.08) / 0.92;
-    const count = Math.floor(1 + intensity * 8);
+    if (band < 0.06) return;
+    const intensity = (band - 0.06) / 0.94;
+    const count = Math.floor(2 + intensity * 10);
     const angle = Math.random() * Math.PI * 2;
-    const baseRadius = 60 + intensity * 120;
+    const baseRadius = 50 + intensity * 140;
     const r = baseRadius + Math.sin(time * 2 + hue) * 20;
 
-    const ring = new Ring(cx, cy, r, hue);
-    rings.push(ring);
-
-    for (let i = 0; i < count; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const s = 1.5 + intensity * 6;
-      const p = new Particle(
-        cx + Math.cos(a) * r,
-        cy + Math.sin(a) * r,
-        a, s, hue
-      );
-      particles.push(p);
+    if (currentMode === 'rings' || currentMode === 'burst') {
+      const ring = new Ring(cx, cy, r, hue);
+      rings.push(ring);
     }
 
-    // Extra burst on strong bass
-    if (band > 0.5 && hue === 150) {
-      for (let i = 0; i < 12; i++) {
+    if (currentMode === 'burst') {
+      for (let i = 0; i < count * 2; i++) {
         const a = Math.random() * Math.PI * 2;
-        const p = new Particle(cx, cy, a, 4 + Math.random() * 4, 45); // gold
+        const s = 2 + intensity * 7;
+        const p = new Particle(cx + Math.cos(a) * r, cy + Math.sin(a) * r, a, s, hue);
+        particles.push(p);
+      }
+    } else {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 1.5 + intensity * 5;
+        const p = new Particle(
+          cx + Math.cos(a) * r,
+          cy + Math.sin(a) * r,
+          a, s, hue
+        );
         particles.push(p);
       }
     }
   }
 
-  // Ambient ring spawner
-  function spawnAmbient() {
-    const angle = Math.random() * Math.PI * 2;
-    const r = 80 + Math.sin(time * 0.5) * 30;
-    const hue = Math.random() < 0.5 ? 150 : 45; // neon or gold
-    const ring = new Ring(cx, cy, r, hue);
-    rings.push(ring);
+  function spawnWave(band, hue) {
+    if (band < 0.05) return;
+    const cols = 48;
+    const stepX = W / cols;
+    for (let i = 0; i < cols; i++) {
+      const bandIdx = Math.floor(i / cols * dataArray.length);
+      const val = dataArray[bandIdx] / 255;
+      const y = cy - 80 + i % 2 === 0 ? -val * 120 : val * 60;
+      if (Math.random() < 0.15 * band) {
+        const wp = new WavePoint(stepX * i, cy + y, hue);
+        wavePoints.push(wp);
+      }
+    }
+  }
+
+  function spawnBeatBurst(energy) {
+    const count = Math.floor(30 + energy * 80);
+    const hue = t().hue1;
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 3 + energy * 12;
+      const d = Math.random() * 200;
+      const p = new Particle(cx + Math.cos(a) * d, cy + Math.sin(a) * d, a, s, hue);
+      particles.push(p);
+    }
+    // Gold sparks
+    for (let i = 0; i < count / 2; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 2 + energy * 8;
+      const d = Math.random() * 150;
+      const p = new Particle(cx + Math.cos(a) * d, cy + Math.sin(a) * d, a, s, t().hue2);
+      particles.push(p);
+    }
   }
 
   function drawBackground() {
-    ctx.fillStyle = 'rgba(10, 10, 10, 0.18)';
+    ctx.fillStyle = 'rgba(10, 10, 10, 0.15)';
     ctx.fillRect(0, 0, W, H);
-
-    // Radial vignette
     const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.7);
     grd.addColorStop(0, 'rgba(10,10,10,0)');
-    grd.addColorStop(1, 'rgba(10,10,10,0.7)');
+    grd.addColorStop(1, 'rgba(10,10,10,0.75)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, W, H);
   }
 
-  function drawCenterPulse(energy) {
-    const pulse = energy * 30;
-    const hue = 150;
+  function drawGrid(bands) {
+    const cols = 24;
+    const rows = gridCells.length / cols;
+    const cellW = W / cols;
+    const cellH = H / rows;
     ctx.save();
-    ctx.globalAlpha = 0.06 + energy * 0.15;
-    ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
-    ctx.shadowColor = `hsl(${hue}, 100%, 65%)`;
-    ctx.shadowBlur = 40;
+    for (let i = 0; i < gridCells.length; i++) {
+      const cell = gridCells[i];
+      const freqIdx = Math.floor(cell.c / cols * dataArray.length);
+      const val = dataArray[freqIdx] / 255;
+      cell.intensity += (val - cell.intensity) * 0.25;
+      const alpha = cell.intensity * 0.6;
+      if (alpha < 0.01) continue;
+      const hue = cell.intensity > 0.6 ? t().hue1 : t().hue2;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+      ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+      ctx.shadowBlur = 8;
+      ctx.fillRect(cell.c * cellW, cell.r * cellH, cellW - 1, cellH - 1);
+    }
+    ctx.restore();
+  }
+
+  function drawWaveform() {
+    if (!analyser) return;
+    analyser.getByteFrequencyData(frequencyData);
+    const step = Math.floor(frequencyData.length / 128);
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    for (let i = 0; i < 128; i++) {
+      const idx = i * step;
+      const val = frequencyData[idx] / 255;
+      const x = (i / 128) * W;
+      const barH = val * H * 0.35;
+      const hue = i % 2 === 0 ? t().hue1 : t().hue2;
+      ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+      ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+      ctx.shadowBlur = 10;
+      ctx.fillRect(x, cy - barH / 2, W / 128 - 1, barH);
+    }
+    ctx.restore();
+  }
+
+  function drawCenterPulse(energy) {
+    const pulse = energy * 35;
+    ctx.save();
+    ctx.globalAlpha = 0.05 + energy * 0.12;
+    ctx.fillStyle = `hsl(${t().hue1}, 100%, 62%)`;
+    ctx.shadowColor = `hsl(${t().hue1}, 100%, 62%)`;
+    ctx.shadowBlur = 50;
     ctx.beginPath();
     ctx.arc(cx, cy, 40 + pulse, 0, Math.PI * 2);
     ctx.fill();
@@ -422,74 +826,99 @@
     const dist = Math.sqrt(dx*dx + dy*dy);
     if (dist < 5) return;
     ctx.save();
-    ctx.globalAlpha = 0.03;
-    ctx.strokeStyle = 'rgba(212,168,83,0.4)';
+    ctx.globalAlpha = 0.025;
+    ctx.strokeStyle = `rgba(${currentTheme === 'neon' ? '0,255,136' : '212,168,83'}, 0.5)`;
     ctx.lineWidth = 0.5;
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 4; i++) {
       ctx.beginPath();
-      ctx.arc(cx, cy, dist + i * 15, 0, Math.PI * 2);
+      ctx.arc(cx, cy, dist + i * 18, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
   }
 
-  function updateFreqBars(bass, mid, high) {
-    const bands = [...freqBars];
-    const step = Math.floor(frequencyData.length / bands.length);
-    for (let i = 0; i < bands.length; i++) {
+  function updateFreqBars() {
+    analyser.getByteFrequencyData(frequencyData);
+    const step = Math.floor(frequencyData.length / freqBars.length);
+    for (let i = 0; i < freqBars.length; i++) {
       const val = frequencyData[i * step] || 0;
-      const h = (val / 255) * 35 + 2;
-      bands[i].style.height = h + 'px';
-      const hue = val > 180 ? 45 : 150;
-      bands[i].style.background = `hsl(${hue}, 100%, 60%)`;
+      const h = (val / 255) * 32 + 2;
+      freqBars[i].style.height = h + 'px';
+      const hue = val > 180 ? t().hue2 : t().hue1;
+      freqBars[i].style.background = `hsl(${hue}, 100%, 60%)`;
     }
   }
 
   function loop() {
     if (!running) return;
-
     time += 0.016;
-
     drawBackground();
     drawMouseRipple();
 
     const bands = getFrequencyBands();
     analyser.getByteFrequencyData(frequencyData);
 
-    bassEnergy += (bands.bass - bassEnergy) * 0.15;
-    midEnergy += (bands.mid - midEnergy) * 0.15;
-    highEnergy += (bands.high - highEnergy) * 0.15;
+    bassEnergy += (bands.bass - bassEnergy) * 0.12;
+    midEnergy += (bands.mid - midEnergy) * 0.12;
+    highEnergy += (bands.high - highEnergy) * 0.12;
 
-    // Spawn rings from frequency bands
-    if (Math.random() < 0.3 + bassEnergy * 0.5) spawnFromBand(bands.bass, 150); // neon
-    if (Math.random() < 0.2 + midEnergy * 0.4) spawnFromBand(bands.mid * 0.7, 45); // gold
-    if (Math.random() < 0.15 + highEnergy * 0.3) spawnFromBand(bands.high, 160); // teal-ish
+    const beat = isBeat(bands.bass);
 
-    // Ambient rings
-    if (Math.random() < 0.02) spawnAmbient();
-
-    // Draw rings
-    for (let i = rings.length - 1; i >= 0; i--) {
-      rings[i].update(bassEnergy + midEnergy);
-      rings[i].draw();
-      if (rings[i].isDead()) rings.splice(i, 1);
+    if (beat && bands.bass > 0.3) {
+      spawnBeatBurst(bands.bass);
     }
 
-    // Draw particles
+    if (currentMode === 'grid') {
+      drawGrid(bands);
+    } else if (currentMode === 'wave') {
+      drawWaveform();
+      if (Math.random() < 0.2 + midEnergy * 0.4) spawnWave(bands.mid, t().hue1);
+      if (Math.random() < 0.15 + highEnergy * 0.3) spawnWave(bands.high * 0.6, t().hue2);
+    } else {
+      // rings / burst modes
+      if (Math.random() < 0.25 + bassEnergy * 0.5) spawnFromBand(bands.bass, t().hue1);
+      if (Math.random() < 0.18 + midEnergy * 0.4) spawnFromBand(bands.mid * 0.7, t().hue2);
+      if (Math.random() < 0.12 + highEnergy * 0.3) spawnFromBand(bands.high, t().hue1);
+
+      // Ambient rings
+      if (Math.random() < 0.015) {
+        const r = 70 + Math.sin(time * 0.4) * 30;
+        const ring = new Ring(cx, cy, r, Math.random() < 0.5 ? t().hue1 : t().hue2);
+        rings.push(ring);
+      }
+
+      for (let i = rings.length - 1; i >= 0; i--) {
+        rings[i].update(bassEnergy + midEnergy);
+        rings[i].draw();
+        if (rings[i].isDead()) rings.splice(i, 1);
+      }
+    }
+
+    // Particles (all modes)
     for (let i = particles.length - 1; i >= 0; i--) {
       particles[i].update();
       particles[i].draw();
       if (particles[i].isDead()) particles.splice(i, 1);
     }
 
-    drawCenterPulse(bassEnergy);
+    // Wave points
+    for (let i = wavePoints.length - 1; i >= 0; i--) {
+      wavePoints[i].update(bands.mid);
+      wavePoints[i].draw();
+      if (wavePoints[i].isDead()) wavePoints.splice(i, 1);
+    }
 
-    updateFreqBars(bands.bass, bands.mid, bands.high);
+    if (currentMode !== 'grid' && currentMode !== 'wave') {
+      drawCenterPulse(bassEnergy);
+    }
 
-    // Cap entities
-    if (rings.length > 60) rings.splice(0, rings.length - 60);
-    if (particles.length > 400) particles.splice(0, particles.length - 400);
+    updateFreqBars();
 
+    if (rings.length > 70) rings.splice(0, rings.length - 70);
+    if (particles.length > 500) particles.splice(0, particles.length - 500);
+    if (wavePoints.length > 300) wavePoints.splice(0, wavePoints.length - 300);
+
+    prevBass = bassEnergy;
     requestAnimationFrame(loop);
   }
 })();
