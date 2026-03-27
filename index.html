@@ -402,6 +402,7 @@
     <button class="mode-btn" data-mode="burst">BURST</button>
     <button class="mode-btn" data-mode="grid">GRID</button>
     <button class="mode-btn" data-mode="radial">RADIAL</button>
+    <button class="mode-btn" data-mode="morph">MORPH</button>
   </div>
   <div class="ctrl-label" style="margin-top:0.4rem">theme</div>
   <div class="theme-row">
@@ -426,7 +427,7 @@
     <div class="key-row"><span class="key">S</span><span class="desc">screenshot</span></div>
     <div class="key-row"><span class="key">H</span><span class="desc">toggle help</span></div>
     <div class="key-row"><span class="key">C</span><span class="desc">auto-cycle modes</span></div>
-    <div class="key-row"><span class="key">1-5</span><span class="desc">direct mode select</span></div>
+    <div class="key-row"><span class="key">1-6</span><span class="desc">direct mode select</span></div>
     <div class="key-row"><span class="key">ESC</span><span class="desc">close this</span></div>
     <p class="close-hint">press H or ESC to close</p>
   </div>
@@ -476,10 +477,10 @@
     void:   { hue1: 270, hue2: 320, name: 'VOID' },
   };
 
-  const MODES = ['rings', 'wave', 'burst', 'grid', 'radial'];
+  const MODES = ['rings', 'wave', 'burst', 'grid', 'radial', 'morph'];
 
   let currentTheme = 'neon';
-  let currentMode = 'radial';
+  let currentMode = 'rings';
   let W, H, cx, cy;
   let audioCtx, analyser, source, dataArray, frequencyData;
   let audioSource = null;
@@ -498,8 +499,14 @@
   let sensitivity = 1.0;
   let autoCycle = false;
   let autoCycleTimer = 0;
-  let radialBars = []; // radial EQ bar segments
-  let trailCanvas, trailCtx; // for trail/glow effect
+  let radialBars = [];
+  let trailCanvas, trailCtx;
+  // Morph 3D state
+  let morphRotX = 0, morphRotY = 0, morphRotZ = 0;
+  let morphPhase = 0; // 0-1 morphing between shapes
+  let morphBassFlash = 0;
+  let beatHistory = []; // rhythm tracker: timestamps of recent beats
+  let rhythmBars = []; // visual bars showing rhythm pattern
 
   // Build freq bar indicators
   for (let i = 0; i < 32; i++) {
@@ -513,7 +520,6 @@
     H = canvas.height = window.innerHeight;
     cx = W / 2;
     cy = H / 2;
-    // Trail canvas for glow persistence
     if (!trailCanvas) {
       trailCanvas = document.createElement('canvas');
       trailCtx = trailCanvas.getContext('2d');
@@ -523,6 +529,7 @@
     trailCtx.clearRect(0, 0, W, H);
     initGrid();
     initRadialBars();
+    initRhythmBars();
   }
   window.addEventListener('resize', resize);
   resize();
@@ -546,12 +553,18 @@
     }
   }
 
+  function initRhythmBars() {
+    rhythmBars = [];
+    for (let i = 0; i < 16; i++) {
+      rhythmBars.push({ beat: false, age: 1 });
+    }
+  }
+
   window.addEventListener('mousemove', e => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
   });
 
-  // Drag and drop
   window.addEventListener('dragover', e => e.preventDefault());
   window.addEventListener('drop', e => {
     e.preventDefault();
@@ -662,7 +675,6 @@
     sensitivityVal.textContent = sensitivity.toFixed(1);
   });
 
-  // Mode & theme controls
   modeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       currentMode = btn.dataset.mode;
@@ -672,6 +684,7 @@
       particles = [];
       wavePoints = [];
       trailCtx.clearRect(0, 0, W, H);
+      morphPhase = 0;
     });
   });
 
@@ -692,6 +705,7 @@
     particles = [];
     wavePoints = [];
     trailCtx.clearRect(0, 0, W, H);
+    morphPhase = 0;
   }
 
   function setTheme(theme) {
@@ -702,13 +716,11 @@
   }
 
   function screenshot() {
-    // Render current frame to a temporary canvas to include everything
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = W;
     tmpCanvas.height = H;
     const tmpCtx = tmpCanvas.getContext('2d');
     tmpCtx.drawImage(canvas, 0, 0);
-    // Draw trail canvas on top
     tmpCtx.drawImage(trailCanvas, 0, 0);
     const link = document.createElement('a');
     link.download = 'neon-pulse-' + Date.now() + '.png';
@@ -731,7 +743,6 @@
     }, 1500);
   }
 
-  // Keyboard shortcuts
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       helpOverlay.classList.remove('visible');
@@ -765,9 +776,8 @@
       playBtn.click();
       return;
     }
-    // Direct mode keys 1-5
     const modeKey = parseInt(e.key);
-    if (modeKey >= 1 && modeKey <= 5) {
+    if (modeKey >= 1 && modeKey <= 6) {
       setMode(MODES[modeKey - 1]);
       return;
     }
@@ -903,9 +913,39 @@
   function isBeat(bass) {
     if (bass > prevBass * 1.35 && bass > 0.25 && time - beatTime > 0.15) {
       beatTime = time;
+      // Track beat for rhythm visualization
+      beatHistory.push(time);
+      if (beatHistory.length > 32) beatHistory.shift();
+      // Update rhythm bars
+      for (let i = rhythmBars.length - 1; i > 0; i--) {
+        rhythmBars[i].beat = rhythmBars[i-1].beat;
+        rhythmBars[i].age = rhythmBars[i-1].age + 0.04;
+      }
+      rhythmBars[0].beat = true;
+      rhythmBars[0].age = 0;
       return true;
     }
     return false;
+  }
+
+  function drawRhythmStrip() {
+    // Draw rhythm history as a row of bars at bottom of screen
+    const barW = W / rhythmBars.length;
+    const barH = 4;
+    const y = H - 20;
+    for (let i = 0; i < rhythmBars.length; i++) {
+      const rb = rhythmBars[i];
+      rb.age = Math.min(1, rb.age + 0.04);
+      if (rb.beat && rb.age < 0.04) {
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = `hsl(${t().hue1}, 100%, 60%)`;
+        ctx.shadowColor = `hsl(${t().hue1}, 100%, 60%)`;
+        ctx.shadowBlur = 10;
+        ctx.fillRect(i * barW, y, barW - 1, barH);
+        ctx.restore();
+      }
+    }
   }
 
   function spawnFromBand(band, hue) {
@@ -972,7 +1012,204 @@
     }
   }
 
-  // Draw trail background (glow persistence)
+  // --- MORPH 3D SYSTEM ---
+  // Icosahedron vertices (20-faced Platonic solid)
+  const PHI = (1 + Math.sqrt(5)) / 2;
+  const icoVerts = [
+    [-1,PHI,0],[1,PHI,0],[-1,-PHI,0],[1,-PHI,0],
+    [0,-1,PHI],[0,1,PHI],[0,-1,-PHI],[0,1,-PHI],
+    [PHI,0,-1],[PHI,0,1],[-PHI,0,-1],[-PHI,0,1]
+  ].map(v => { const len = Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]); return [v[0]/len, v[1]/len, v[2]/len]; });
+
+  // Cube vertices
+  const cubeVerts = [
+    [-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],
+    [-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]
+  ];
+
+  // Octahedron vertices
+  const octaVerts = [
+    [1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]
+  ];
+
+  // Icosahedron faces (20 triangles as vertex index pairs)
+  const icoFaces = [
+    [0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],
+    [1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],
+    [3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],
+    [4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]
+  ];
+
+  // Cube faces (6 squares as vertex index pairs for edges)
+  const cubeFaces = [
+    [0,1],[1,2],[2,3],[3,0], // bottom
+    [4,5],[5,6],[6,7],[7,4], // top
+    [0,4],[1,5],[2,6],[3,7]  // sides
+  ];
+
+  const octaFaces = [
+    [0,2],[0,3],[0,4],[0,5],[1,2],[1,3],[1,4],[1,5],
+    [2,4],[2,5],[3,4],[3,5]
+  ];
+
+  function project3D(x, y, z, rotX, rotY, rotZ, scale) {
+    // Rotate around X
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    let y1 = y * cosX - z * sinX;
+    let z1 = y * sinX + z * cosX;
+    // Rotate around Y
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    let x2 = x * cosY + z1 * sinY;
+    let z2 = -x * sinY + z1 * cosY;
+    // Rotate around Z
+    const cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+    let x3 = x2 * cosZ - y1 * sinZ;
+    let y3 = x2 * sinZ + y1 * cosZ;
+    // Perspective
+    const fov = 600;
+    const depth = fov + z2 * scale * 2;
+    const projX = cx + (x3 * scale * fov) / depth;
+    const projY = cy + (y3 * scale * fov) / depth;
+    const projScale = fov / depth;
+    return { x: projX, y: projY, s: projScale };
+  }
+
+  function lerp3(a, b, t) {
+    return [a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t, a[2] + (b[2]-a[2])*t];
+  }
+
+  function getMorphVertices(phase, bass, mid, high) {
+    // phase 0-1-0: icosahedron <-> cube <-> octahedron
+    let verts;
+    if (phase < 0.5) {
+      const t = phase * 2;
+      verts = icoVerts.map((v, i) => {
+        const cubeV = cubeVerts[i % 8];
+        return lerp3(v, cubeV, t);
+      });
+    } else {
+      const t = (phase - 0.5) * 2;
+      verts = cubeVerts.map((v, i) => {
+        const octV = octaVerts[i % 6];
+        return lerp3(v, octV, t);
+      });
+    }
+    // Audio-reactive displacement
+    const bassDisp = bass * 0.4;
+    const midDisp = mid * 0.25;
+    const highDisp = high * 0.15;
+    return verts.map((v, i) => {
+      const disp = (bassDisp + midDisp * Math.sin(i * 0.7 + time) + highDisp * Math.sin(i * 1.3 + time * 1.7));
+      return [v[0] * (1 + disp), v[1] * (1 + disp), v[2] * (1 + disp)];
+    });
+  }
+
+  function drawMorph3D(bands) {
+    const scale = Math.min(W, H) * 0.18 * (1 + bassEnergy * 0.6);
+    const rotSpeed = 0.008 + bassEnergy * 0.015;
+    morphRotX += rotSpeed;
+    morphRotY += rotSpeed * 0.7;
+    morphRotZ += rotSpeed * 0.4;
+
+    // Auto-morph between shapes
+    morphPhase += 0.003 + bassEnergy * 0.005;
+    if (morphPhase > 1) morphPhase = 0;
+
+    const verts = getMorphVertices(morphPhase, bands.bass, bands.mid, bands.high);
+
+    // Get projected vertices
+    const projected = verts.map(v => project3D(v[0], v[1], v[2], morphRotX, morphRotY, morphRotZ, scale));
+
+    // Determine which faces to draw (sort by depth for painter's algorithm)
+    const faces = phase < 0.5 ? icoFaces : cubeFaces;
+    const facesToDraw = faces.map((face, idx) => {
+      const center = face.reduce((acc, vi) => {
+        acc[0] += verts[vi][0]; acc[1] += verts[vi][1]; acc[2] += verts[vi][2];
+        return acc;
+      }, [0,0,0]);
+      center[0] /= face.length; center[1] /= face.length; center[2] /= face.length;
+      // Simple depth: average z after rotation
+      const cosX = Math.cos(morphRotX), sinX = Math.sin(morphRotX);
+      const cy_ = center[1]*cosX - center[2]*sinX;
+      const cz_ = center[1]*sinX + center[2]*cosX;
+      const cosY = Math.cos(morphRotY), sinY = Math.sin(morphRotY);
+      const cx_ = center[0]*cosY + cz_*sinY;
+      return { face, depth: cx_ + cz_, idx };
+    });
+    facesToDraw.sort((a, b) => b.depth - a.depth);
+
+    // Draw faces as filled polygons with glow
+    for (const fd of facesToDraw) {
+      const face = fd.face;
+      const pts = face.map(vi => projected[vi]);
+      const hue = t().hue1 + Math.sin(fd.depth * 2 + time) * 20;
+      const alpha = 0.12 + bassEnergy * 0.2;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = `hsl(${hue}, 100%, 55%)`;
+      ctx.shadowColor = `hsl(${hue}, 100%, 65%)`;
+      ctx.shadowBlur = 8 + bassEnergy * 20;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw edges
+      ctx.globalAlpha = 0.3 + bassEnergy * 0.5;
+      ctx.strokeStyle = `hsl(${hue}, 100%, 70%)`;
+      ctx.lineWidth = 0.8 + bassEnergy * 1.5;
+      ctx.shadowBlur = 12 + bassEnergy * 30;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw vertex dots
+    for (let i = 0; i < projected.length; i++) {
+      const p = projected[i];
+      const hue = t().hue2;
+      ctx.save();
+      ctx.globalAlpha = 0.6 + highEnergy * 0.4;
+      ctx.fillStyle = `hsl(${hue}, 100%, 75%)`;
+      ctx.shadowColor = `hsl(${hue}, 100%, 75%)`;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2 * p.s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Beat flash effect
+    if (morphBassFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = morphBassFlash * 0.25;
+      ctx.fillStyle = `hsl(${t().hue1}, 100%, 80%)`;
+      ctx.shadowColor = `hsl(${t().hue1}, 100%, 80%)`;
+      ctx.shadowBlur = 60;
+      ctx.beginPath();
+      ctx.arc(cx, cy, scale * 2.5 * morphBassFlash, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      morphBassFlash -= 0.04;
+    }
+
+    // Center glow
+    const pulse = bassEnergy * 80;
+    ctx.save();
+    ctx.globalAlpha = 0.08 + bassEnergy * 0.15;
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, scale * 1.5 + pulse);
+    grd.addColorStop(0, `hsl(${t().hue1}, 100%, 70%)`);
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(cx, cy, scale * 1.5 + pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // --- END MORPH 3D ---
+
   function drawTrail() {
     trailCtx.fillStyle = 'rgba(10, 10, 10, 0.18)';
     trailCtx.fillRect(0, 0, W, H);
@@ -1032,13 +1269,11 @@
   }
 
   function drawRadialEQ(bands) {
-    // Map frequency data to 64 radial bars
     const count = radialBars.length;
     const baseRadius = Math.min(W, H) * 0.12;
 
     analyser.getByteFrequencyData(frequencyData);
 
-    // Compute per-bar values from frequency data
     for (let i = 0; i < count; i++) {
       const freqIdx = Math.floor(i / count * frequencyData.length);
       const val = (frequencyData[freqIdx] || 0) / 255;
@@ -1046,7 +1281,6 @@
       radialBars[i].value += (radialBars[i].target - radialBars[i].value) * 0.18;
     }
 
-    // Draw concentric rings from frequency bands
     const numRings = 3;
     for (let ring = 0; ring < numRings; ring++) {
       const ringRadius = baseRadius + ring * baseRadius * 0.8;
@@ -1062,11 +1296,10 @@
       ctx.restore();
     }
 
-    // Draw bars
     ctx.save();
     for (let i = 0; i < count; i++) {
       const bar = radialBars[i];
-      const angle = bar.angle + time * 0.05; // slow rotation
+      const angle = bar.angle + time * 0.05;
       const barLen = bar.value * baseRadius * 2.5;
       const barW = (Math.PI * 2 / count) * 0.85;
 
@@ -1088,7 +1321,6 @@
     }
     ctx.restore();
 
-    // Center glow based on bass
     const pulse = bands.bass * 60;
     ctx.save();
     ctx.globalAlpha = 0.06 + bands.bass * 0.15;
@@ -1148,7 +1380,6 @@
     if (!running) return;
     time += 0.016;
 
-    // Auto-cycle
     if (autoCycle) {
       autoCycleTimer += 0.016;
       if (autoCycleTimer > 5) {
@@ -1173,6 +1404,7 @@
 
     if (beat && bands.bass > 0.3) {
       spawnBeatBurst(bands.bass);
+      morphBassFlash = 1.0;
     }
 
     if (currentMode === 'grid') {
@@ -1183,16 +1415,16 @@
       if (Math.random() < 0.15 + highEnergy * 0.3) spawnWave(bands.high * 0.6, t().hue2);
     } else if (currentMode === 'radial') {
       drawRadialEQ(bands);
-      // Spawn from bands
       if (Math.random() < 0.25 + bassEnergy * 0.5) spawnFromBand(bands.bass, t().hue1);
       if (Math.random() < 0.18 + midEnergy * 0.4) spawnFromBand(bands.mid * 0.7, t().hue2);
+    } else if (currentMode === 'morph') {
+      drawMorph3D(bands);
     } else {
       // rings / burst modes
       if (Math.random() < 0.25 + bassEnergy * 0.5) spawnFromBand(bands.bass, t().hue1);
       if (Math.random() < 0.18 + midEnergy * 0.4) spawnFromBand(bands.mid * 0.7, t().hue2);
       if (Math.random() < 0.12 + highEnergy * 0.3) spawnFromBand(bands.high, t().hue1);
 
-      // Ambient rings
       if (Math.random() < 0.015) {
         const r = 70 + Math.sin(time * 0.4) * 30;
         const ring = new Ring(cx, cy, r, Math.random() < 0.5 ? t().hue1 : t().hue2);
@@ -1220,7 +1452,7 @@
       if (wavePoints[i].isDead()) wavePoints.splice(i, 1);
     }
 
-    if (currentMode !== 'grid' && currentMode !== 'wave' && currentMode !== 'radial') {
+    if (currentMode !== 'grid' && currentMode !== 'wave' && currentMode !== 'radial' && currentMode !== 'morph') {
       drawCenterPulse(bassEnergy);
     }
 
